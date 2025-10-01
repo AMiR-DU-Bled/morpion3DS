@@ -2,7 +2,6 @@
 #include <3ds.h>
 #include <citro2d.h>
     short checkinputtouch(touchPosition touch){
-        short touched=10;
         int cellWidth  = 320 / 3; // 106
         int cellHeight = 240 / 3; // 80
 
