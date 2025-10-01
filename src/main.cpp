@@ -9,6 +9,25 @@
 #include <citro2d.h>
 #include <buttonClass.h>
 #include <keyboardClass.h>
+void drawFullScreenGrid(int rows, int cols) {
+    int screenWidth = 320;
+    int screenHeight = 240;
+
+    float cellWidth = (float)screenWidth / cols;
+    float cellHeight = (float)screenHeight / rows;
+
+    for (int i = 1; i < cols; i++) {
+        float x = i * cellWidth;
+        C2D_DrawRectSolid(x, 0, 0.0f, 4, screenHeight, C2D_Color32(0,0,0,255));
+    }
+
+    for (int i = 1; i < rows; i++) {
+        float y = i * cellHeight;
+        C2D_DrawRectSolid(0, y, 0.0f, screenWidth, 4, C2D_Color32(0,0,0,255));
+    }
+}
+
+
 void showgrid(int grid[3][3]){
     std::cout<<" y";
     for (int i=0;i<3;i++){
@@ -332,14 +351,19 @@ void interpretinput(short& x,short& y,short cell){
 void player1(int grid[3][3],short x,short y){
     short cell=10,toomucherror=0;
     touchPosition touch;
+    C3D_RenderTarget* bottom = C2D_CreateScreenTarget(GFX_BOTTOM, GFX_LEFT);
     bool showonscreen=false;
-    while (true){
-        gspWaitForVBlank();
-        gfxSwapBuffers();
-        hidScanInput();
+    while (aptMainLoop()){
+        C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
         hidTouchRead(&touch);
+        C2D_SceneBegin(bottom);
+        hidScanInput();
         u32 kDown = hidKeysDown();
+        C2D_TargetClear(bottom, C2D_Color32(0,255,255,255));
+        drawFullScreenGrid(3, 3);
 		if (kDown&KEY_START){
+            C2D_Fini();
+            C3D_Fini();
             gfxExit();
             exit(0);
         }
@@ -351,6 +375,8 @@ void player1(int grid[3][3],short x,short y){
         if (grid[x][y]==0 && x<3 && y<3){
             grid[x][y]=1;
             //std::cout<<"\033[6;1H"<<"\033[2K";
+            C3D_FrameEnd(0);
+            C3D_RenderTargetDelete(bottom);
             break;
         }
         else{
@@ -364,18 +390,25 @@ void player1(int grid[3][3],short x,short y){
             //<<"\033[6;1H"<<"\033[2K";;
         }
         }
+        C3D_FrameEnd(0);
     }
 }
 void player2(int grid[3][3],short x,short y){
     short cell=10,toomucherror=0;
     touchPosition touch;
+    C3D_RenderTarget* bottom = C2D_CreateScreenTarget(GFX_BOTTOM, GFX_LEFT);
     bool showonscreen=false;
-    while (true){
-        gspWaitForVBlank();
-        gfxSwapBuffers();
+    while (aptMainLoop()){
+        C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
+        hidTouchRead(&touch);
+        C2D_SceneBegin(bottom);
         hidScanInput();
         u32 kDown = hidKeysDown();
+        C2D_TargetClear(bottom, C2D_Color32(255,0,255,255));
+        drawFullScreenGrid(3, 3);
 		if (kDown&KEY_START){
+            C2D_Fini();
+            C3D_Fini();
             gfxExit();
             exit(0);
         }
@@ -388,6 +421,8 @@ void player2(int grid[3][3],short x,short y){
             if (grid[x][y]==0 && x<3 && y<3){
                 grid[x][y]=2;
                 //std::cout<<"\033[6;1H"<<"\033[2K";
+                C3D_FrameEnd(0);
+                C3D_RenderTargetDelete(bottom);
                 break;
             }
             else{
@@ -400,18 +435,18 @@ void player2(int grid[3][3],short x,short y){
                 toomucherror++;//<<"\033[6;1H"<<"\033[2K";;
             }
         }
+        C3D_FrameEnd(0);
     }
 }
 int main(){
-	/*gfxInit(GSP_BGR8_OES, GSP_BGR8_OES, true);  // top and bottom both BGR8, with double buffering
+	gfxInitDefault();
 	C3D_Init(C3D_DEFAULT_CMDBUF_SIZE);
 	C2D_Init(C2D_DEFAULT_MAX_OBJECTS);
-	C2D_Prepare();*/
-    gfxInitDefault();
+	C2D_Prepare();
 	PrintConsole top;
 	consoleInit(GFX_TOP, &top);
 	consoleSelect(&top);
-	//makeC3D_RenderTarget* bottom = C2D_CreateScreenTarget(GFX_BOTTOM, GFX_LEFT);
+	C3D_RenderTarget* bottom = C2D_CreateScreenTarget(GFX_BOTTOM, GFX_LEFT);
 	int grid[3][3];
 	short y=4,x=4,winner=0;
     bool turn=false;//false mean p1 true mean p2
@@ -424,76 +459,64 @@ int main(){
 	std::cout<<"tick tac toe game!\n"<<"0 stands for empty, 1 for player 1(aka cross), and\n2 for player 2(aka circle)\n";
     std::cout<<"please touch the bottom screen in order to play\n"
     "REMEMBER : rows and colums start with 0\n";
-	while (aptMainLoop())
+	while (aptMainLoop()&&!game_end)
 	{
-        gspWaitForVBlank();
-        gfxSwapBuffers();
+        C3D_FrameBegin(C3D_FRAME_SYNCDRAW);   // begin frame
+        //gfxSwapBuffers();
 		hidScanInput();
-		/*C3D_FrameBegin(C3D_FRAME_SYNCDRAW);   // begin frame
-		C2D_TargetClear(bottom, C2D_Color32(255,255,255,255)); // clear to white
-        C2D_SceneBegin(bottom);*/
 		u32 kDown = hidKeysDown();
 		if (kDown&KEY_START)break;
-		while (!game_end){
-		/*C3D_FrameBegin(C3D_FRAME_SYNCDRAW);   // begin frame
-		C2D_TargetClear(bottom, C2D_Color32(255,255,255,255)); // clear to white
-        C2D_SceneBegin(bottom);*/
-		u32 kDown = hidKeysDown();
-		if (kDown&KEY_START)break;
-			showgrid(grid);
-			if (turn==false){
-				player1(grid,x,y);
-				turn=true;
-			}
-			else {
-				player2(grid,x,y);
-				turn=false;
-			}
-			showgrid(grid);
-			winner=verify(grid);
-			if (!winner==0){
-            game_end=true;
-            clearendscreen();
-            }
-            else {
-            clearscreen();
-            }
-		
-		//C3D_FrameEnd(0); 
-	}
+        C2D_SceneBegin(bottom);
+        C2D_TargetClear(bottom, C2D_Color32(255,255,255,255)); // clear to white
+        showgrid(grid);
+        if (turn==false){
+            player1(grid,x,y);
+            turn=true;
+        }
+        else {
+            player2(grid,x,y);
+            turn=false;
+        }
+        showgrid(grid);
+        winner=verify(grid);
+        if (!winner==0){
+        game_end=true;
+        clearendscreen();
+        }
+        else {
+        clearscreen();
+        }
+        C3D_FrameEnd(0); 
+    }
     if (winner==3){
         std::cout<<"Its a draw !\n";
-        break;
     }
     else{
     std::cout<<"Player "<<winner<<" has won !\n";
-    break;
     }
-}
+    // Delete the old render target
+    if (bottom != nullptr) {
+        C3D_RenderTargetDelete(bottom);
+        bottom = nullptr;
+    }
+    // Create a new render target
+    bottom = C2D_CreateScreenTarget(GFX_BOTTOM, GFX_LEFT);
     while (aptMainLoop()){
-        gspWaitForVBlank();
-        gfxSwapBuffers();
-		hidScanInput();
+        hidScanInput();
+        C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
+        C2D_SceneBegin(bottom);
+        C2D_TargetClear(bottom, C2D_Color32(255,255,255,255)); // clear to white
         u32 kDown = hidKeysDown();
 		if (kDown&KEY_START)break;
-        if (quitmessage==false)std::cout<<"\nPlease press start to quit.";
+        if (quitmessage==false)std::cout<<"\nPlease press start to quit.\n";
         quitmessage=true;
+        C3D_FrameEnd(0); 
     }
-	/*C2D_Fini();
-    C3D_Fini();*/
+	C2D_Fini();
+    C3D_Fini();
 	gfxExit();
 	return 0;
 }
-
-/*
-touchPosition touch;
-hidTouchRead(&touch);
-if (touch.px!=0 ||touch.py!=0){
-cellselected=checkinputtouch(touch);
-std::cout<<"you pressed cell : "<<cellselected<<'\n';
-svcSleepThread(1000000000LL);//en nanosecondes
-}*/
-
 
 /*
 int main(){
