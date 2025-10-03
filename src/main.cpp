@@ -5,10 +5,24 @@
 #include <sstream>
 #include <vector>
 #include <string>
+#include <cmath>
 #include <3ds.h>
 #include <citro2d.h>
 #include <buttonClass.h>
 #include <keyboardClass.h>
+#include <gros_crane.h>
+C3D_RenderTarget* bottom;
+struct Point {
+    int xstart; // x-coordinate
+    int ystart; // y-coordinate
+    int xend;
+    int yend;
+};
+struct Circle {
+    int centerX, centerY, radius;
+    std::vector<Point> points;
+};
+std::vector<Circle> circles;
 void drawFullScreenGrid(int rows, int cols) {
     int screenWidth = 320;
     int screenHeight = 240;
@@ -351,7 +365,6 @@ void interpretinput(short& x,short& y,short cell){
 void player1(int grid[3][3],short x,short y){
     short cell=10,toomucherror=0;
     touchPosition touch;
-    C3D_RenderTarget* bottom = C2D_CreateScreenTarget(GFX_BOTTOM, GFX_LEFT);
     bool showonscreen=false;
     while (aptMainLoop()){
         C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
@@ -376,7 +389,6 @@ void player1(int grid[3][3],short x,short y){
             grid[x][y]=1;
             //std::cout<<"\033[6;1H"<<"\033[2K";
             C3D_FrameEnd(0);
-            C3D_RenderTargetDelete(bottom);
             break;
         }
         else{
@@ -396,7 +408,7 @@ void player1(int grid[3][3],short x,short y){
 void player2(int grid[3][3],short x,short y){
     short cell=10,toomucherror=0;
     touchPosition touch;
-    C3D_RenderTarget* bottom = C2D_CreateScreenTarget(GFX_BOTTOM, GFX_LEFT);
+    
     bool showonscreen=false;
     while (aptMainLoop()){
         C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
@@ -422,7 +434,6 @@ void player2(int grid[3][3],short x,short y){
                 grid[x][y]=2;
                 //std::cout<<"\033[6;1H"<<"\033[2K";
                 C3D_FrameEnd(0);
-                C3D_RenderTargetDelete(bottom);
                 break;
             }
             else{
@@ -438,6 +449,40 @@ void player2(int grid[3][3],short x,short y){
         C3D_FrameEnd(0);
     }
 }
+void calculate_circle(int centerx,int centery, int radius, short cell){
+    double x1,y1,x2,y2;
+    int xstart,ystart,xend,yend;
+    double angleInRadians;
+    const double PI = 3.14159265358979323846,changestep=PI/180/2;
+    if (circles.size() <= static_cast<size_t>(cell))
+    circles.resize(cell + 1);
+    circles[cell].points.resize(720);
+    circles[cell].centerX = centerx;
+    circles[cell].centerY = centery;
+    circles[cell].radius = radius;
+    for (int angle=0;angle<720;angle++){
+        angleInRadians = angle * changestep;
+        x1 = centerx + radius * cos(angleInRadians);
+        y1 = centery + radius * sin(angleInRadians);
+        x2 = centerx + radius * cos(angleInRadians + changestep);
+        y2 = centery + radius * sin(angleInRadians + changestep);
+        xstart = std::round(x1);
+        xend = std::round(x2);
+        ystart = std::round(y1);
+        yend = std::round(y2);
+        circles[cell].points[angle].xstart = xstart;
+        circles[cell].points[angle].xend = xend;
+        circles[cell].points[angle].ystart = ystart;
+        circles[cell].points[angle].yend = yend;
+        //C2D_DrawLine(xstart,ystart,C2D_Color32(0,0,255,255),xend,yend,C2D_Color32(0,0,255,255),6,0);
+    }
+}
+void keepcircle(short cell){
+    for (size_t i=0;i<circles[cell].points.size();i+=1){
+        C2D_DrawLine(circles[cell].points[i].xstart,circles[cell].points[i].ystart,C2D_Color32(0,0,255,255)
+        ,circles[cell].points[i].xend,circles[cell].points[i].yend,C2D_Color32(0,0,255,255),10,0);
+    }
+}
 int main(){
 	gfxInitDefault();
 	C3D_Init(C3D_DEFAULT_CMDBUF_SIZE);
@@ -446,7 +491,7 @@ int main(){
 	PrintConsole top;
 	consoleInit(GFX_TOP, &top);
 	consoleSelect(&top);
-	C3D_RenderTarget* bottom = C2D_CreateScreenTarget(GFX_BOTTOM, GFX_LEFT);
+    bottom = C2D_CreateScreenTarget(GFX_BOTTOM, GFX_LEFT);
 	int grid[3][3];
 	short y=4,x=4,winner=0;
     bool turn=false;//false mean p1 true mean p2
@@ -494,18 +539,27 @@ int main(){
     else{
     std::cout<<"Player "<<winner<<" has won !\n";
     }
-    // Delete the old render target
-    if (bottom != nullptr) {
-        C3D_RenderTargetDelete(bottom);
-        bottom = nullptr;
-    }
-    // Create a new render target
-    bottom = C2D_CreateScreenTarget(GFX_BOTTOM, GFX_LEFT);
+
+    //C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
+    //C2D_SceneBegin(bottom);
+    C2D_TargetClear(bottom, C2D_Color32(255,255,255,255));
+    calculate_circle(20,190,20,0);
+    calculate_circle(50,40,20,1);
+    calculate_circle(80,70,20,2);
+    calculate_circle(150,100,20,3);
+    calculate_circle(100,190,20,4);
+    //C3D_FrameEnd(0);
+
     while (aptMainLoop()){
         hidScanInput();
         C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
         C2D_SceneBegin(bottom);
-        C2D_TargetClear(bottom, C2D_Color32(255,255,255,255)); // clear to white
+        //C2D_TargetClear(bottom, C2D_Color32(255,255,255,255)); // clear to white
+        keepcircle(0);
+        keepcircle(1);
+        keepcircle(2);
+        keepcircle(3);
+        keepcircle(4);
         u32 kDown = hidKeysDown();
 		if (kDown&KEY_START)break;
         if (quitmessage==false)std::cout<<"\nPlease press start to quit.\n";
