@@ -7,7 +7,7 @@
 #include <string>
 #include <3ds.h>
 #include <citro2d.h>
-#include <buttonClass.h>
+#include <button.h>
 #include <keyboardClass.h>
 void Keyboard::initkeyboard( SwkbdType type, int numButtons, int maxTextLength){
     swkbdInit(&swkbd, type, numButtons, maxTextLength);  // Normal keyboard

@@ -10,9 +10,12 @@
                 "C:/devkitpro/portlibs/3ds/include/**",
                 "C:/devkitPro/devkitARM/arm-none-eabi/include/**"
             ],
-            "defines": ["_3DS"],
+            "defines": [
+                "_3DS"
+            ],
             "cStandard": "c11",
-            "cppStandard": "c++17"
+            "cppStandard": "c++17",
+            "configurationProvider": "ms-vscode.makefile-tools"
         }
     ],
     "version": 4

@@ -1,5 +1,5 @@
 #--------------------------------------
-# 3DS Homebrew Makefile (Windows, with prebuilt ROMFS)
+# 3DS Homebrew Makefile (Windows, auto ROMFS)
 #--------------------------------------
 
 # Project name
@@ -12,7 +12,7 @@ INCLUDE   := include
 LIBCTRU   := /c/devkitPro/libctru
 DEVKITPRO := /c/devkitPro
 DEVKITARM := /c/devkitPro/devkitARM
-#ROMFS_SRC := bin/romfs.bin  # Already built manually
+ROMFS     := romfs         # <-- Use your folder directly
 
 # Compiler and flags
 CXX := "$(DEVKITARM)/bin/arm-none-eabi-g++"
@@ -43,10 +43,10 @@ $(BUILD)/%.o: $(SRC)/%.cpp | $(BUILD)
 $(BUILD)/$(TARGET).elf: $(OBJS)
 	$(CXX) $^ -o $@ $(LDFLAGS)
 
-# Convert ELF to 3DSX and embed SMDH + prebuilt ROMFS
-$(BUILD)/$(TARGET).3dsx: $(BUILD)/$(TARGET).elf icon.smdh $(ROMFS_SRC)
-	$(3DSXTOOL) $< $@ --smdh=icon.smdh  
-#--romfs=$(ROMFS_SRC)
+# Convert ELF to 3DSX and embed SMDH + ROMFS folder
+$(BUILD)/$(TARGET).3dsx: $(BUILD)/$(TARGET).elf icon.smdh
+	$(3DSXTOOL) $< $@ --smdh=icon.smdh --romfs=$(ROMFS)
+
 # Create build directory if missing
 $(BUILD):
 	mkdir -p $(BUILD)

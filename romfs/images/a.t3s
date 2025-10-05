@@ -1,0 +1,3 @@
+-f rgba -z auto
+../png/a.png
+;tex3ds -o a.t3x ../png/a.png -f rgba -z auto

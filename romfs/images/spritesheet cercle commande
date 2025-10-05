@@ -1,0 +1,1 @@
+tex3ds -o circle_spritesheet.t3x --atlas cercle0.png cercle1.png cercle2.png cercle3.png cercle4.png cercle5.png -f rgba -z auto

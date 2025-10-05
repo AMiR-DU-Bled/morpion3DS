@@ -1,0 +1,1 @@
+tex3ds -o cross_spritesheet.t3x --atlas cross0.png cross1.png cross2.png cross3.png cross4.png cross5.png -f rgba -z auto

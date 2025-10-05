@@ -1,3 +1,5 @@
+#ifndef KEYBOARD_CLASS_H
+#define KEYBOARD_CLASS_H
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -17,3 +19,4 @@ class Keyboard{
     void sethinttext(const char* hinttext);
     bool showkeyboard();
 };
+#endif

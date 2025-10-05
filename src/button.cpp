@@ -1,11 +1,11 @@
-#include <buttonClass.h>
+#include <button.h>
 #include <3ds.h>
 #include <citro2d.h>
     short checkinputtouch(touchPosition touch){
-        int cellWidth  = 320 / 3; // 106
-        int cellHeight = 240 / 3; // 80
+        short cellWidth  = 320 / 3; // 106
+        short cellHeight = 240 / 3; // 80
 
-        int col, row;
+        short col, row;
 
         // Handle X (remainder goes to last column)
         if (touch.px < 2 * cellWidth)
