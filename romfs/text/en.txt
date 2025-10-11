@@ -1,0 +1,8 @@
+GAME_NAME=tick tac toe !
+GAME_START=Press any key to begin
+QUIT=press start to quit
+PLAYER1_PLAY=player 1 your turn !
+PLAYER1_WIN=player 1 won !
+PLAYER2_PLAY=player 2 your turn !
+PLAYER2_WIN=player 2 won !
+DRAW= its a draw !

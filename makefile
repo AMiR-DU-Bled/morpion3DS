@@ -12,7 +12,7 @@ INCLUDE   := include
 LIBCTRU   := /c/devkitPro/libctru
 DEVKITPRO := /c/devkitPro
 DEVKITARM := /c/devkitPro/devkitARM
-ROMFS     := romfs         # <-- Use your folder directly
+ROMFS     := romfs
 
 # Compiler and flags
 CXX := "$(DEVKITARM)/bin/arm-none-eabi-g++"
@@ -32,27 +32,49 @@ MAKEROM  := "$(DEVKITPRO)/tools/bin/makerom.exe"
 SRCS := $(wildcard $(SRC)/*.cpp)
 OBJS := $(SRCS:$(SRC)/%.cpp=$(BUILD)/%.o)
 
-# Default target
-all: $(BUILD)/$(TARGET).3dsx
+#--------------------------------------
+# Default: build both 3DSX and CIA
+#--------------------------------------
+all: $(BUILD)/$(TARGET).3dsx $(BUILD)/$(TARGET).cia
 
-# Compile objects
+#--------------------------------------
+# Object build
+#--------------------------------------
 $(BUILD)/%.o: $(SRC)/%.cpp | $(BUILD)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-# Link ELF
+#--------------------------------------
+# ELF
+#--------------------------------------
 $(BUILD)/$(TARGET).elf: $(OBJS)
 	$(CXX) $^ -o $@ $(LDFLAGS)
 
-# Convert ELF to 3DSX and embed SMDH + ROMFS folder
+#--------------------------------------
+# 3DSX
+#--------------------------------------
 $(BUILD)/$(TARGET).3dsx: $(BUILD)/$(TARGET).elf icon.smdh
 	$(3DSXTOOL) $< $@ --smdh=icon.smdh --romfs=$(ROMFS)
 
-# Create build directory if missing
+#--------------------------------------
+# CIA build
+#--------------------------------------
+$(BUILD)/$(TARGET).cia: $(BUILD)/$(TARGET).elf icon.smdh cia.rsf
+	@echo "Building CIA..."
+	"$(MAKEROM)" -f cia -o $@ -elf $< \
+		-icon icon.smdh -rsf cia.rsf \
+		-target t -exefslogo -romfs $(ROMFS)
+	@echo "CIA built: $@"
+
+#--------------------------------------
+# Build folder
+#--------------------------------------
 $(BUILD):
 	mkdir -p $(BUILD)
 
+#--------------------------------------
 # Clean
+#--------------------------------------
 clean:
 	rm -rf $(BUILD)/*
 
-.PHONY: all clean
+.PHONY: all clean cia

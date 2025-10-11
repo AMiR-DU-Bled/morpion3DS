@@ -1,0 +1,14 @@
+# cia.rsf — minimal RSF for homebrew CIA on Windows devkitPro
+
+BasicInfo:
+  Title       : "Morpion"
+  ProductCode : "CTR-P-MORP"
+  CompanyCode : "00"
+  Logo        : Nintendo
+
+TitleInfo:
+  Category    : Application
+
+Option:
+  UseOnSD     : true
+  EnableCompress : true
