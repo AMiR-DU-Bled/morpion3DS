@@ -10,11 +10,18 @@
 #include <citro2d.h>
 #include <map>
 #include <fstream>
+#include <malloc.h>
+#include <dirent.h>
+#include <ctype.h>
+//my headers
 #include <button.h>
 #include <keyboardClass.h>
 #include <gros_crane.h>
 #include <morpionlogic.h>
 #include <loadImage.h>
+#include <audiohelp.hpp>
+#include <user_music.h>
+
 std::map<std::string, std::string> translations;
 C2D_TextBuf textBuf = C2D_TextBufNew(4096), fpsbuf = C2D_TextBufNew(4096);
 C2D_Text gameNameC2D, startC2D, quitC2D, player1WinC2D, player2WinC2D, player1PlayC2D, player2PlayC2D, drawC2D , fpsconter;
@@ -24,6 +31,11 @@ C2D_Sprite circle[5];
 C2D_SpriteSheet crossSprites;
 C2D_Sprite cross[4];
 std::vector<Image3DS> images(2); // reserve space for 2 images
+MusicPlayer * bloon_is_peak = nullptr;
+int currentSong = 0;
+bool playbloonmusic=true;
+MusicPlayer* user_music = nullptr;
+std::vector<std::string> wavFiles;
 float positions[9][2] = {
     {21.33f, 8.0f},    {128.0f, 8.0f},    {234.66f, 8.0f},
     {21.33f, 88.0f},   {128.0f, 88.0f},   {234.66f, 88.0f},
@@ -45,16 +57,6 @@ void drawFullScreenGrid(short rows, short cols) {
         C2D_DrawRectSolid(0, y, 0.0f, screenWidth, 4, C2D_Color32(0,0,0,255));
     }
 }
-
-void clearscreen(){
-    std::cout << "\033[6;1H";
-    std::cout<<"\x1b[0J";
-}
-void clearendscreen(){
-    std::cout << "\033[12;1H";
-    std::cout<<"\x1b[0J";
-}
-
 
 void interpretinput(short& x,short& y,short cell){
     switch (cell)
@@ -221,9 +223,9 @@ void keepdraw(short grid[3][3]){
     }
 }
 void player1(short grid[3][3],short x,short y){
-    short cell=10,toomucherror=0, circleindex=0,framecount=0,numcircle=0;
+    short cell=10, circleindex=0,framecount=0,numcircle=0;
     touchPosition touch;
-    bool showonscreen=false, annimation=false;
+    bool annimation=false;
     while (aptMainLoop()){
         C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
         hidTouchRead(&touch);
@@ -231,9 +233,45 @@ void player1(short grid[3][3],short x,short y){
         C2D_TargetClear(top, C2D_Color32(255,255,255,255)); // clear to white
         C2D_DrawText(&player1PlayC2D, C2D_WithColor, 100, 30, 0.5f, 1.0f, 1.0f, C2D_Color32(255,0,255,255)); // red
         C2D_DrawText(&quitC2D, C2D_WithColor, 40, 120, 0.5f, 1.0f, 1.0f, C2D_Color32(255,0,0,255)); // red
+        if (playbloonmusic)bloon_is_peak->update();
+        else updateUserMusic(user_music,wavFiles, currentSong);
+        if (!user_music) {
+       C2D_DrawEllipseSolid(50, 50, 1, 20, 30, C2D_Color32(255,0,0,255));
+    } else {
+        C2D_DrawEllipseSolid(50, 50, 1, 20, 30, C2D_Color32(255,0,255,255));
+    }
         C2D_SceneBegin(bottom);
         hidScanInput();
         u32 kDown = hidKeysDown();
+        if (kDown & KEY_B) {
+            if (playbloonmusic) {
+                if (bloon_is_peak) {
+                    bloon_is_peak->stop();
+                    delete bloon_is_peak;
+                    bloon_is_peak = nullptr;
+                }
+                if (user_music) {
+                    user_music->stop();
+                    delete user_music;
+                }
+                user_music = new MusicPlayer(wavFiles[currentSong].c_str(), 1, false);
+                user_music->play();
+                playbloonmusic = false;
+            } else {
+                if (user_music) {
+                    user_music->stop();
+                    delete user_music;
+                    user_music = nullptr;
+                }
+                if (bloon_is_peak) {
+                    bloon_is_peak->stop();
+                    delete bloon_is_peak;
+                }
+                bloon_is_peak = new MusicPlayer("romfs:/audio/BloonsDiscoParty.wav", 0, true); 
+                bloon_is_peak->play();
+                playbloonmusic = true;
+            }
+        }
         C2D_TargetClear(bottom, C2D_Color32(255,255,255,255));
         drawFullScreenGrid(3, 3);
         keepdraw(grid,cell);
@@ -244,11 +282,10 @@ void player1(short grid[3][3],short x,short y){
             C3D_TexDelete(&images[0].tex);
             C2D_Fini();
             C3D_Fini();
+            ndspExit();
             gfxExit();
             exit(0);
         }
-        if (showonscreen==false)std::cout<<"please touch were you want to put the cross\n";
-        showonscreen=true;
         if ((touch.px!=0||touch.py!=0 )&& annimation==false){
         cell=checkinputtouch(touch);
         interpretinput(x,y,cell);
@@ -258,15 +295,7 @@ void player1(short grid[3][3],short x,short y){
             annimation=true;
             C3D_FrameEnd(0);
         }
-        else{
-            if (toomucherror==3){
-                std::cout << "\033[14;0H";
-                std::cout<<"\x1b[0J";
-                toomucherror=0;
-            } 
-            std::cout<<"invalid input\nlocation pointed to already used or does not exist\n" ;
-            toomucherror++;
-        }
+        else cell=10;
         }
         if (annimation==true){
             C2D_SpriteFromSheet(&circle[numcircle], cirlceSprites, circleindex);
@@ -283,9 +312,9 @@ void player1(short grid[3][3],short x,short y){
     }
 }
 void player2(short grid[3][3],short x,short y){
-    short cell=10,toomucherror=0, crossindex=0,framecount=0,numcross=0;;
+    short cell=10, crossindex=0,framecount=0,numcross=0;;
     touchPosition touch;
-    bool showonscreen=false, annimation=false;
+    bool annimation=false;
     while (aptMainLoop()){
         C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
         hidTouchRead(&touch);
@@ -294,8 +323,39 @@ void player2(short grid[3][3],short x,short y){
         C2D_DrawText(&player2PlayC2D, C2D_WithColor, 100, 30, 0.5f, 1.0f, 1.0f, C2D_Color32(255,0,255,255)); // red
         C2D_DrawText(&quitC2D, C2D_WithColor, 40, 120, 0.5f, 1.0f, 1.0f, C2D_Color32(255,0,0,255)); // red
         C2D_SceneBegin(bottom);
+        if (playbloonmusic)bloon_is_peak->update();
+        else updateUserMusic(user_music,wavFiles, currentSong);
         hidScanInput();
         u32 kDown = hidKeysDown();
+        if (kDown & KEY_B) {
+            if (playbloonmusic) {
+                if (bloon_is_peak) {
+                    bloon_is_peak->stop();
+                    delete bloon_is_peak;
+                    bloon_is_peak = nullptr;
+                }
+                if (user_music) {
+                    user_music->stop();
+                    delete user_music;
+                }
+                user_music = new MusicPlayer(wavFiles[currentSong].c_str(), 1, false);
+                user_music->play();
+                playbloonmusic = false;
+            } else {
+                if (user_music) {
+                    user_music->stop();
+                    delete user_music;
+                    user_music = nullptr;
+                }
+                if (bloon_is_peak) {
+                    bloon_is_peak->stop();
+                    delete bloon_is_peak;
+                }
+                bloon_is_peak = new MusicPlayer("romfs:/audio/BloonsDiscoParty.wav", 0, true); 
+                bloon_is_peak->play();
+                playbloonmusic = true;
+            }
+        }
         C2D_TargetClear(bottom, C2D_Color32(255,255,255,255));
         drawFullScreenGrid(3, 3);
         keepdraw(grid,cell);
@@ -306,12 +366,11 @@ void player2(short grid[3][3],short x,short y){
             C3D_TexDelete(&images[0].tex);
             C2D_Fini();
             C3D_Fini();
+            ndspExit();
             gfxExit();
             romfsExit();
             exit(0);
         }
-        if (showonscreen==false)std::cout<<"please touch were you want to put the circle\n";
-        showonscreen=true;
         if ((touch.px!=0||touch.py!=0 ) && annimation==false){
             cell=checkinputtouch(touch);
             interpretinput(x,y,cell);
@@ -321,16 +380,8 @@ void player2(short grid[3][3],short x,short y){
                 annimation=true;
                 C3D_FrameEnd(0);
             }
-            else{
-                if (toomucherror==3){
-                std::cout << "\033[14;0H";
-                std::cout<<"\x1b[0J";
-                toomucherror=0;
-            } 
-                std::cout<<"invalid input\nlocation pointed to already used or does not exist\n" ;
-                toomucherror++;
+            else cell=10;
             }
-        }
         if (annimation==true){
             C2D_SpriteFromSheet(&cross[numcross], crossSprites, crossindex);
             C2D_SpriteSetPos(&cross[numcross],positions[cell][0],positions[cell][1]);       // position in grid   
@@ -350,6 +401,7 @@ void loadLanguage(const std::string& path) {
     std::ifstream file(path);
     if (!file.is_open()) {
         printf("Failed to open %s\n", path.c_str());
+        svcSleepThread(10*100000000LL);
         return;
     }
     std::string line;
@@ -380,12 +432,16 @@ int main(){
 	C3D_Init(C3D_DEFAULT_CMDBUF_SIZE);
 	C2D_Init(C2D_DEFAULT_MAX_OBJECTS);
 	C2D_Prepare();
+    ndspInit();
+    ndspSetOutputMode(NDSP_OUTPUT_STEREO);
+    fsInit();
     Result rc = romfsInit();
     if (R_FAILED(rc)) {
         printf("romfsInit failed: 0x%08lX\n", rc);
         svcSleepThread(10*1000000000LL);
         return -1;
     }
+    const char* musicPath = "sdmc:/3ds/morpion3ds/music";
     //PrintConsole top;
 	//consoleInit(GFX_TOP, &top);
 	//consoleSelect(&top);
@@ -445,11 +501,18 @@ int main(){
     svcSleepThread(10*1000000000LL);
     return 1;
     }
+    bloon_is_peak = new MusicPlayer("romfs:/audio/BloonsDiscoParty.wav", 0, true);
+    bloon_is_peak->setVolume(1.0f,1.0f);
+    ensureMusicFolderExists(musicPath);
+    listWavFiles(musicPath, wavFiles);  
+    if (!wavFiles.empty()) {
+    user_music = new MusicPlayer(wavFiles[currentSong].c_str(), 1, false); // channel 1
+    }
 	short grid[3][3];
-	short y=4,x=4,winner=0 ,framecontertitle = 0;
+	short y=4,x=4,winner=0;
     float sizetitle=0.0f;
     bool turn=false;//false mean p1 true mean p2
-    bool game_end=false, quitmessage=false, titlesmalling = true;
+    bool game_end=false, titlesmalling = true;
     for (short i=0;i<3;i++){
         for (short j=0;j<3;j++){
             grid[i][j]=0;
@@ -458,7 +521,10 @@ int main(){
     u64 lastTime = osGetTime();   // time in milliseconds since app start
     int frames = 0;               // how many frames have passed
     float fps = 0.0f;             // result to display
+    if (playbloonmusic)bloon_is_peak->play();
     while (aptMainLoop()){
+        if (playbloonmusic)bloon_is_peak->update();
+        else updateUserMusic(user_music,wavFiles, currentSong);
         C3D_FrameBegin(C3D_FRAME_SYNCDRAW);   // begin frame
         C2D_SceneBegin(bottom);
         C2D_TargetClear(bottom,C2D_Color32(255,255,255,255));
@@ -471,16 +537,13 @@ int main(){
         C2D_TextBufClear(fpsbuf);
         C2D_TextParse(&fpsconter, fpsbuf, fpsString);
         C2D_TextOptimize(&fpsconter);
-        C2D_DrawText(&fpsconter, C2D_WithColor, 100, 200, 0.0f, 0.6f, 0.6f, C2D_Color32(255,255,0,255));
-        //if (framecontertitle == 60){
-            if (sizetitle <= 1.28f && titlesmalling){
+        C2D_DrawText(&fpsconter, C2D_WithColor, 100, 200, 0.0f, 0.6f, 0.6f, C2D_Color32(255,150,0,255));
+        if (sizetitle <= 1.28f && titlesmalling){
             sizetitle += 0.01f;
             titlesmalling = true;
-            }
-            else { sizetitle -= 0.01f; titlesmalling = false;}
-            if (sizetitle <= 0.5f) titlesmalling = true;
-        //}
-        //else framecontertitle++;
+        }
+        else { sizetitle -= 0.01f; titlesmalling = false;}
+        if (sizetitle <= 0.5f) titlesmalling = true;
         hidScanInput();
 		u32 kDown = hidKeysDown();
         if (!(kDown & KEY_START) && !(kDown & KEY_TOUCH) && kDown != 0)break;
@@ -491,26 +554,20 @@ int main(){
             C3D_TexDelete(&images[0].tex);
             C2D_Fini();
             C3D_Fini();
+            ndspExit();
             gfxExit();
             romfsExit();
             exit(0);
         }
         C3D_FrameEnd(0);
         frames++;                 // count one more frame
-
         // calculate every 1000 ms (1 second)
         u64 currentTime = osGetTime();
         if (currentTime - lastTime >= 1000) {
             fps = frames * 1000.0f / (currentTime - lastTime);
             frames = 0;                  // reset counter
             lastTime = currentTime;      // reset timer
-
-            // display the result
-            printf("\x1b[1;1HFPS: %.2f", fps); // print on the top-left of the console
-        }
-                
-
-        
+        }     
     }
 	while (aptMainLoop()&&!game_end)
 	{
@@ -518,6 +575,8 @@ int main(){
         C2D_SceneBegin(top);
         C2D_TargetClear(top, C2D_Color32(255,255,255,255)); // clear to white
         C2D_DrawText(&quitC2D, C2D_WithColor, 40, 120, 0.5f, 1.0f, 1.0f, C2D_Color32(255,0,0,255)); // red
+        if (playbloonmusic)bloon_is_peak->update();
+        else updateUserMusic(user_music,wavFiles, currentSong);
         if (turn==false){
             C2D_DrawText(&player1PlayC2D, C2D_WithColor, 100, 30, 0.5f, 1.0f, 1.0f, C2D_Color32(255,0,255,255));
         }
@@ -533,12 +592,41 @@ int main(){
             C3D_TexDelete(&images[0].tex);
             C2D_Fini();
             C3D_Fini();
+            ndspExit();
             gfxExit();
             romfsExit();
             exit(0);
         }
+        if (kDown & KEY_B) {
+            if (playbloonmusic) {
+                if (bloon_is_peak) {
+                    bloon_is_peak->stop();
+                    delete bloon_is_peak;
+                    bloon_is_peak = nullptr;
+                }
+                if (user_music) {
+                    user_music->stop();
+                    delete user_music;
+                }
+                user_music = new MusicPlayer(wavFiles[currentSong].c_str(), 1, false);
+                user_music->play();
+                playbloonmusic = false;
+            } else {
+                if (user_music) {
+                    user_music->stop();
+                    delete user_music;
+                    user_music = nullptr;
+                }
+                if (bloon_is_peak) {
+                    bloon_is_peak->stop();
+                    delete bloon_is_peak;
+                }
+                bloon_is_peak = new MusicPlayer("romfs:/audio/BloonsDiscoParty.wav", 0, true); 
+                bloon_is_peak->play();
+                playbloonmusic = true;
+            }
+        }
         C2D_SceneBegin(bottom);
-        showgrid(grid);
         C2D_TargetClear(bottom,C2D_Color32(255,255,255,255));
         drawFullScreenGrid(3,3);
         keepdraw(grid);
@@ -552,14 +640,9 @@ int main(){
             player2(grid,x,y);
             turn=false;
         }
-        showgrid(grid);
         winner=verify(grid);
         if (!winner==0){
         game_end=true;
-        clearendscreen();
-        }
-        else {
-        clearscreen();
         }
         C3D_FrameEnd(0); 
     }
@@ -569,6 +652,38 @@ int main(){
         C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
         C2D_SceneBegin(top);
         C2D_TargetClear(top, C2D_Color32(255,255,255,255)); // clear to white
+        if (bloon_is_peak)bloon_is_peak->update();
+        else updateUserMusic(user_music,wavFiles, currentSong);
+        u32 kDown = hidKeysDown();
+        if (kDown & KEY_B) {
+            if (playbloonmusic) {
+                if (bloon_is_peak) {
+                    bloon_is_peak->stop();
+                    delete bloon_is_peak;
+                    bloon_is_peak = nullptr;
+                }
+                if (user_music) {
+                    user_music->stop();
+                    delete user_music;
+                }
+                user_music = new MusicPlayer(wavFiles[currentSong].c_str(), 1, false);
+                user_music->play();
+                playbloonmusic = false;
+            } else {
+                if (user_music) {
+                    user_music->stop();
+                    delete user_music;
+                    user_music = nullptr;
+                }
+                if (bloon_is_peak) {
+                    bloon_is_peak->stop();
+                    delete bloon_is_peak;
+                }
+                bloon_is_peak = new MusicPlayer("romfs:/audio/BloonsDiscoParty.wav", 0, true); 
+                bloon_is_peak->play();
+                playbloonmusic = true;
+            }
+        }
         if (test==false)C2D_DrawText(&quitC2D, C2D_WithColor, 40, 120, 0.5f, 1.0f, 1.0f, C2D_Color32(255,0,0,255)); // red
         else C2D_DrawText(&quitC2D, C2D_WithColor, 40, 0, 0.5f, 1.0f, 1.0f, C2D_Color32(255,255,0,255));
         if (winner==3){
@@ -588,6 +703,7 @@ int main(){
         C2D_DrawText(&fpsconter, C2D_WithColor, 100, 200, 0.0f, 0.6f, 0.6f, C2D_Color32(0,0,0,255));
         C2D_SceneBegin(bottom);
         C2D_TargetClear(bottom, C2D_Color32(255,255,120,255)); // clear
+        bloon_is_peak->update();
         for (short i=0;i<5;i++){
             C2D_SpriteFromSheet(&circle[i], cirlceSprites, circleindex);
             C2D_SpriteSetPos(&circle[i],positions[i][0],positions[i][1]);       // position in grid   
@@ -599,7 +715,6 @@ int main(){
             C2D_DrawSprite(&cross[i]);
         }
         drawFullScreenGrid(3,3);
-        u32 kDown = hidKeysDown();
         framecount++;
         if (framecount >= 10) {
             framecount = 0;
@@ -609,28 +724,26 @@ int main(){
         if (circleindex>6)circleindex=0;
         if (crossindex>6)crossindex=0;
 		if (kDown&KEY_START)break;
-        if (quitmessage==false)std::cout<<"\nPlease press start to quit.\n";
-        quitmessage=true;
         C3D_FrameEnd(0); 
         frames++;                 // count one more frame
-
         // calculate every 1000 ms (1 second)
         u64 currentTime = osGetTime();
         if (currentTime - lastTime >= 1000) {
             fps = frames * 1000.0f / (currentTime - lastTime);
             frames = 0;                  // reset counter
             lastTime = currentTime;      // reset timer
-
-            // display the result
-            printf("\x1b[1;1HFPS: %.2f", fps); // print on the top-left of the console
         }
     }
+    //delete bloon_is_peak;
+    C2D_TextBufDelete(textBuf);
+    C2D_TextBufDelete(fpsbuf);
     C2D_SpriteSheetFree(cirlceSprites);
     C2D_SpriteSheetFree(crossSprites);
     C3D_TexDelete(&images[0].tex);
     C3D_TexDelete(&images[0].tex);
 	C2D_Fini();
     C3D_Fini();
+    ndspExit();
 	gfxExit();
     romfsExit();
 	return 0;
