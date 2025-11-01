@@ -21,6 +21,7 @@
 #include <loadImage.h>
 #include <audiohelp.hpp>
 #include <user_music.h>
+#include <textsystem.h>
 
 std::map<std::string, std::string> translations;
 C2D_TextBuf textBuf = C2D_TextBufNew(4096), fpsbuf = C2D_TextBufNew(4096);
@@ -30,6 +31,7 @@ C2D_SpriteSheet cirlceSprites;
 C2D_Sprite circle[5];
 C2D_SpriteSheet crossSprites;
 C2D_Sprite cross[4];
+u32 kDown;
 std::vector<Image3DS> images(2); // reserve space for 2 images
 MusicPlayer * bloon_is_peak = nullptr;
 int currentSong = 0;
@@ -58,98 +60,21 @@ void drawFullScreenGrid(short rows, short cols) {
     }
 }
 
-void interpretinput(short& x,short& y,short cell){
-    switch (cell)
-    {
-    case 0:
-        x=0;
-        y=0;
-    break;
-    case 1:
-        x=0;
-        y=1;
-    break;
-    case 2:
-        x=0;
-        y=2;
-    break;
-    case 3:
-        x=1;
-        y=0;
-    break;
-    case 4:
-        x=1;
-        y=1;
-    break;
-    case 5:
-        x=1;
-        y=2;
-    break;
-    case 6:
-        x=2;
-        y=0;
-    break;
-    case 7:
-        x=2;
-        y=1;
-    break;
-    case 8:
-        x=2;
-        y=2;
-    break;
-    
-    default:
-        break;
+void interpretinput(short& x, short& y, short cell) {
+    if (cell < 0 || cell > 8) {
+        x = y = -1; // optional: indicate invalid cell
+        return;
     }
+    x = cell / 3;
+    y = cell % 3;
 }
-short xytocell(short x,short y){
-    switch (x)
-    {
-    case 0:
-        switch (y)
-        {
-        case 0:
-            return 0;
-            break;
-        case 1:
-            return 1;
-            break;
-        case 2:
-            return 2;
-            break;
-        }
-        break;
-    case 1:
-        switch (y)
-        {
-        case 0:
-            return 3;
-            break;
-        case 1:
-            return 4;
-            break;
-        case 2:
-            return 5;
-            break;
-        }
-        break;
-    case 2:
-        switch (y)
-        {
-        case 0:
-            return 6;
-            break;
-        case 1:
-            return 7;
-            break;
-        case 2:
-            return 8;
-            break;
-        }
-        break;
-    }
-    return -1;
+
+short xytocell(short x, short y) {
+    if (x < 0 || x >= 3 || y < 0 || y >= 3)
+        return -1; // out of bounds
+    return x * 3 + y;
 }
+
 short assignnumbertobject(short grid[3][3],bool player/*false=p1 true=p2*/){
     short numobj=0;
     for (short i=0;i<3;i++){
@@ -234,15 +159,9 @@ void player1(short grid[3][3],short x,short y){
         C2D_DrawText(&player1PlayC2D, C2D_WithColor, 100, 30, 0.5f, 1.0f, 1.0f, C2D_Color32(255,0,255,255)); // red
         C2D_DrawText(&quitC2D, C2D_WithColor, 40, 120, 0.5f, 1.0f, 1.0f, C2D_Color32(255,0,0,255)); // red
         if (playbloonmusic)bloon_is_peak->update();
-        else updateUserMusic(user_music,wavFiles, currentSong);
-        if (!user_music) {
-       C2D_DrawEllipseSolid(50, 50, 1, 20, 30, C2D_Color32(255,0,0,255));
-    } else {
-        C2D_DrawEllipseSolid(50, 50, 1, 20, 30, C2D_Color32(255,0,255,255));
-    }
         C2D_SceneBegin(bottom);
         hidScanInput();
-        u32 kDown = hidKeysDown();
+        kDown = hidKeysDown();
         if (kDown & KEY_B) {
             if (playbloonmusic) {
                 if (bloon_is_peak) {
@@ -276,6 +195,7 @@ void player1(short grid[3][3],short x,short y){
         drawFullScreenGrid(3, 3);
         keepdraw(grid,cell);
 		if (kDown&KEY_START){
+            C3D_FrameEnd(0);
             C2D_SpriteSheetFree(cirlceSprites);
             C2D_SpriteSheetFree(crossSprites);
             C3D_TexDelete(&images[0].tex);
@@ -326,7 +246,7 @@ void player2(short grid[3][3],short x,short y){
         if (playbloonmusic)bloon_is_peak->update();
         else updateUserMusic(user_music,wavFiles, currentSong);
         hidScanInput();
-        u32 kDown = hidKeysDown();
+        kDown = hidKeysDown();
         if (kDown & KEY_B) {
             if (playbloonmusic) {
                 if (bloon_is_peak) {
@@ -360,6 +280,7 @@ void player2(short grid[3][3],short x,short y){
         drawFullScreenGrid(3, 3);
         keepdraw(grid,cell);
 		if (kDown&KEY_START){
+            C3D_FrameEnd(0);
             C2D_SpriteSheetFree(cirlceSprites);
             C2D_SpriteSheetFree(crossSprites);
             C3D_TexDelete(&images[0].tex);
@@ -396,35 +317,7 @@ void player2(short grid[3][3],short x,short y){
         C3D_FrameEnd(0);
     }
 }
-void loadLanguage(const std::string& path) {
-    translations.clear();  // remove old translations
-    std::ifstream file(path);
-    if (!file.is_open()) {
-        printf("Failed to open %s\n", path.c_str());
-        svcSleepThread(10*100000000LL);
-        return;
-    }
-    std::string line;
-    while (std::getline(file, line)) {
-        if (!line.empty() && line.back() == '\r')
-        line.pop_back(); // remove carriage return
-        if (line.empty() || line[0] == '#') continue; // skip blank/comments
-        size_t eq = line.find('=');
-        if (eq != std::string::npos) {
-            std::string key = line.substr(0, eq);
-            std::string value = line.substr(eq + 1);
-            translations[key] = value;
-            std::cout<<value;
-        }
-    }
-}
 
-const char* tr(const std::string& key) {
-    auto it = translations.find(key);
-    if (it != translations.end())
-        return it->second.c_str();
-    return key.c_str(); // fallback if key not found
-}
 
 int main(){
     bool test =false;
@@ -545,7 +438,7 @@ int main(){
         else { sizetitle -= 0.01f; titlesmalling = false;}
         if (sizetitle <= 0.5f) titlesmalling = true;
         hidScanInput();
-		u32 kDown = hidKeysDown();
+		kDown = hidKeysDown();
         if (!(kDown & KEY_START) && !(kDown & KEY_TOUCH) && kDown != 0)break;
         if (kDown&KEY_START){
             C2D_SpriteSheetFree(cirlceSprites);

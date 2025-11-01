@@ -35,7 +35,7 @@ OBJS := $(SRCS:$(SRC)/%.cpp=$(BUILD)/%.o)
 #--------------------------------------
 # Default: build both 3DSX and CIA
 #--------------------------------------
-all: $(BUILD)/$(TARGET).3dsx $(BUILD)/$(TARGET).cia
+all: $(BUILD)/$(TARGET).3dsx #$(BUILD)/$(TARGET).cia
 
 #--------------------------------------
 # Object build
@@ -58,12 +58,12 @@ $(BUILD)/$(TARGET).3dsx: $(BUILD)/$(TARGET).elf icon.smdh
 #--------------------------------------
 # CIA build
 #--------------------------------------
-$(BUILD)/$(TARGET).cia: $(BUILD)/$(TARGET).elf icon.smdh cia.rsf
-	@echo "Building CIA..."
-	"$(MAKEROM)" -f cia -o $@ -elf $< \
-		-icon icon.smdh -rsf cia.rsf \
-		-target t -exefslogo -romfs $(ROMFS)
-	@echo "CIA built: $@"
+#$(BUILD)/$(TARGET).cia: $(BUILD)/$(TARGET).elf icon.smdh cia.rsf
+#	@echo "Building CIA..."
+#	"$(MAKEROM)" -f cia -o $@ -elf $< \
+#		-icon icon.smdh -rsf cia.rsf \
+#		-target t -exefslogo -romfs $(ROMFS)
+#	@echo "CIA built: $@"
 
 #--------------------------------------
 # Build folder

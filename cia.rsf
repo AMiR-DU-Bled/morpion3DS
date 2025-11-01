@@ -1,5 +1,3 @@
-# cia.rsf — minimal RSF for homebrew CIA on Windows devkitPro
-
 BasicInfo:
   Title       : "Morpion"
   ProductCode : "CTR-P-MORP"
@@ -8,6 +6,10 @@ BasicInfo:
 
 TitleInfo:
   Category    : Application
+
+Rom:
+  HostRoot    : "../cia_content"
+  Dest        : "/"
 
 Option:
   UseOnSD     : true
