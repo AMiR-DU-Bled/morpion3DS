@@ -6,3 +6,4 @@ PLAYER1_WIN=player 1 won !
 PLAYER2_PLAY=player 2 your turn !
 PLAYER2_WIN=player 2 won !
 DRAW= its a draw !
+REPLAY= please press SELECT to replay

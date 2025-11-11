@@ -6,3 +6,4 @@ PLAYER1_WIN=le joueur 1 à gagné !
 PLAYER2_PLAY=c'est au tour du joueur 2 de jouer
 PLAYER2_WIN=le joueur 2 à gagné !
 DRAW= c'est une égalité
+REPLAY= veullez appuyer sur SELECT pour rejouer
